@@ -1,0 +1,20 @@
+Important
+
+	Graphs
+		- Populate Hbox2 with graphs (line, pie, bubble) using radio buttons to change
+	
+	Table view
+		- Add table view, allow user to click data from the table view and populate the graphs with it (not the top graph)
+	
+	Text Field
+		- Add text field to show total number from data selected. i.e. You select multiple numbers and it adds them and displays then in the field.
+	
+	Update
+		- Add a button to refresh data - it should disable all functionality when pressed - Also disable refresh button and replace it with a progress indicator.
+	
+Extras
+
+
+
+	Menu Bar
+		- Add menu bar, add print function, maybe see what else we can add to menu bar.

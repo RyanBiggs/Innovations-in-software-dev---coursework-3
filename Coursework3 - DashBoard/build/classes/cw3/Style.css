@@ -1,0 +1,15 @@
+.check-box
+{
+    -fx-font: 12 'Calibri';
+}
+
+.axis
+{
+    -fx-font: 10 'Calibri';
+    -fx-tick-label-font: 10 'Calibri';
+}
+
+.bar-chart
+{
+    -fx-font: 12 'Calibri';
+}
