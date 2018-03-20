@@ -29,11 +29,11 @@ import javafx.fxml.Initializable;
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
 import javafx.scene.chart.BarChart;
-import javafx.scene.chart.BubbleChart;
 import javafx.scene.chart.CategoryAxis;
 import javafx.scene.chart.LineChart;
 import javafx.scene.chart.NumberAxis;
 import javafx.scene.chart.PieChart;
+import javafx.scene.chart.StackedBarChart;
 import javafx.scene.chart.XYChart;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
@@ -44,6 +44,7 @@ import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.Toggle;
 import javafx.scene.control.ToggleGroup;
+import javafx.scene.control.Tooltip;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.HBox;
@@ -54,47 +55,60 @@ public class DashboardController implements Initializable
 {
     private static String markup;
     private static List<Vehicles> vehicles;
-    private static List<String> strings;
+    private static List<String> yearStrings, vehicleStrings, regionStrings;
     private DashService service;
     
     // Delcare Checkboxes
-    private CheckBox[] checkBoxes;
-
+    private CheckBox[] yearCheckBoxes;
+    
     // Delclare radio buttons and toggle group
     @FXML
-    private RadioButton radioBubble, radioPie, radioLine;
+    private RadioButton radioBar1, radioPie1, radioBar2, radioPie2, radioBar3, radioPie3;
     @FXML
-    private ToggleGroup myGroup;
+    private ToggleGroup myGroup1, myGroup2, myGroup3;
     @FXML
-    private HBox HBox1, Hbox2;
+    private HBox yearCheckBoxesContainer, quarterlySalesChartType, regionalSalesChartType;
     @FXML
     private AnchorPane AnchorPane1;
 
     // Declare barchart and axes for barchart
     @FXML
-    private NumberAxis yAxis;
+    private BarChart<?, ?> barChart1;
     @FXML
-    private CategoryAxis xAxis;
+    private NumberAxis barChart1YAxis;
     @FXML
-    private BarChart<?, ?> BarChart1;
+    private CategoryAxis barChart1XAxis;
+    
+    @FXML
+    private StackedBarChart<?, ?> barChart2;
+    @FXML
+    private NumberAxis barChart2YAxis;
+    @FXML
+    private CategoryAxis barChart2XAxis;
+    
+    @FXML
+    private StackedBarChart<?, ?> barChart3;
+    @FXML
+    private NumberAxis barChart3YAxis;
+    @FXML
+    private CategoryAxis barChart3XAxis;
+
 
     // Declare linechart and axes
     @FXML
-    private LineChart<?, ?> lineChart1;
+    private LineChart<?, ?> lineChart2;
     @FXML
-    private NumberAxis lineNoAxis;
-
-    // Declare bubble chart and axes
+    private CategoryAxis lineXAxis;
     @FXML
-    private BubbleChart<?, ?> bubbleChart1;
-    @FXML
-    private NumberAxis bubbleNoAxisL;
-    @FXML
-    private NumberAxis bubbleNoAxisB;
+    private NumberAxis lineYAxis;
     
     // Declare piechart
     @FXML
     private PieChart pieChart1;
+    @FXML
+    private PieChart pieChart2;
+    @FXML
+    private PieChart pieChart3;
     
     // Declare menubar
     @FXML
@@ -104,11 +118,7 @@ public class DashboardController implements Initializable
     
     // Declare progress indicator
     @FXML
-    private ProgressIndicator progressIndicator;
-    
-    // Declare table
-    @FXML
-    private TableView<Vehicles> table;
+    private ProgressIndicator progressIndicator;  
 
     @Override
     public void initialize(URL url, ResourceBundle rb) 
@@ -130,25 +140,43 @@ public class DashboardController implements Initializable
             {
                 markup = e.getSource().getValue().toString();
 
-                vehicles = (new Gson()).
-                        fromJson(markup,
-                                new TypeToken<ObservableList<Vehicles>>() 
-                                {
-                                    
-                                }.getType());
+                Gson gson = new Gson();
                 
-                System.out.print(vehicles);
+                vehicles = gson.fromJson( markup, new TypeToken<ObservableList<Vehicles>>(){}.getType() );
+                
+                // DEBUG
+                vehicles.add(new Vehicles("America", "Elise", 100, 2015, (byte)1)); // NOTE : Insert Data
+                vehicles.add(new Vehicles("America", "Elise", 100, 2015, (byte)2)); // NOTE : Insert Data
+                vehicles.add(new Vehicles("America", "Elise", 200, 2015, (byte)3)); // NOTE : Insert Data
+                vehicles.add(new Vehicles("America", "Elise", 1000, 2015, (byte)4)); // NOTE : Insert Data
 
-                strings = vehicles.stream()
+                yearStrings = vehicles.stream()
                         .map(object -> object.getYearString())
                         .distinct()
                         .collect(Collectors.toList());
                 
+                vehicleStrings = vehicles.stream()
+                        .map(object -> object.getVehicle())
+                        .distinct()
+                        .collect(Collectors.toList());
+                
+                regionStrings = vehicles.stream()
+                        .map(object -> object.getRegion())
+                        .distinct()
+                        .collect(Collectors.toList());
+                
+                // DEBUG
+                //System.out.println(vehicleStrings);
+                //System.out.println("VEHICLES : " + vehicles);
+                
+                // Clear the year selector checkboxes, so when refreshed duplicates aren't added
+                yearCheckBoxesContainer.getChildren().clear();
+                
                 constructCheckBoxes();
                 constructRadio();
                 constructMenuBar();
-                constructTable();
                 
+                // Re-enable refresh button once refresh is complete
                 refresh.setDisable(false);
             }
         });
@@ -159,7 +187,13 @@ public class DashboardController implements Initializable
         refresh.setOnAction((ActionEvent e) -> 
         {
             System.out.println("Refreshing Data!");
+            
+            // Disable refresh button once clicked
             refresh.setDisable(true);
+            
+            // Disable other stuff
+            
+            // Restart service
             service.restart();
             
         });
@@ -168,21 +202,14 @@ public class DashboardController implements Initializable
     //constructs checkboxes for the barchart
     private void constructCheckBoxes()
     {        
-        if (Arrays.toString(checkBoxes).isEmpty())
-        {
-            
-        }
-        
-        
-        System.out.print(checkBoxes);
-        checkBoxes = new CheckBox[strings.size()];
+        yearCheckBoxes = new CheckBox[yearStrings.size()];
         
         //loops through data set creating a new check box for each year in the table
-        for (byte index = 0; index < strings.size(); index++)
+        for (byte index = 0; index < yearStrings.size(); index++)
         {
-            checkBoxes[index] = new CheckBox(strings.get(index));
-            checkBoxes[index].setSelected(false);
-            checkBoxes[index].addEventFilter(ActionEvent.ACTION, new EventHandler<ActionEvent>() 
+            yearCheckBoxes[index] = new CheckBox(yearStrings.get(index));
+            yearCheckBoxes[index].setSelected(false);
+            yearCheckBoxes[index].addEventFilter(ActionEvent.ACTION, new EventHandler<ActionEvent>() 
             {
                 @Override
                 public void handle(ActionEvent e) 
@@ -191,7 +218,7 @@ public class DashboardController implements Initializable
                 }
             });
             
-            checkBoxes[index].addEventHandler(ActionEvent.ACTION, new EventHandler<ActionEvent>()
+            yearCheckBoxes[index].addEventHandler(ActionEvent.ACTION, new EventHandler<ActionEvent>()
             {
                 @Override
                 public void handle(ActionEvent e)
@@ -200,7 +227,7 @@ public class DashboardController implements Initializable
                 }
             });
             
-            checkBoxes[index].setOnAction(new EventHandler<ActionEvent>()
+            yearCheckBoxes[index].setOnAction(new EventHandler<ActionEvent>()
             {
                 @Override
                 public void handle(ActionEvent e)
@@ -212,32 +239,170 @@ public class DashboardController implements Initializable
             });
             
             //adds the constructed check boxes to a hbox
-            HBox1.getChildren().add(checkBoxes[index]);
+            yearCheckBoxesContainer.getChildren().add(yearCheckBoxes[index]);
         }
         AnchorPane1.getScene().getWindow().sizeToScene();
     }
 
-    //constructs the data set for the barchart
+    //****************************
+    //  constructSeries - Desc
+    //****************************
     private void constructSeries()
     {
-        BarChart1.getData().clear();
+        barChart1.getData().clear();
+        pieChart1.getData().clear();
+        
+        barChart2.getData().clear();
+        pieChart2.getData().clear();
+        
+        barChart3.getData().clear();
+        pieChart3.getData().clear();
 
-        for (CheckBox checkBox : checkBoxes)
+        for (CheckBox checkBox : yearCheckBoxes)
         {
             if (checkBox.isSelected())
             {
+                // Total sales bar chart
                 XYChart.Series series = new XYChart.Series();
                 series.setName(checkBox.getText());
+                
+                // Total sales pie chart
+                
 
-                for (Vehicles vehicle : vehicles)
-                {
-                    if (vehicle.getYearString().equals(checkBox.getText()))
+                // Quarterly sales bar chart            
+                XYChart.Series seriesQtr1 = new XYChart.Series();
+                seriesQtr1.setName(checkBox.getText() + ": Q1");
+                
+                XYChart.Series seriesQtr2 = new XYChart.Series();
+                seriesQtr2.setName(checkBox.getText() + ": Q2");
+                
+                XYChart.Series seriesQtr3 = new XYChart.Series();
+                seriesQtr3.setName(checkBox.getText() + ": Q3");
+                
+                XYChart.Series seriesQtr4 = new XYChart.Series();
+                seriesQtr4.setName(checkBox.getText() + ": Q4");
+                
+                // quarterly sales pie chart
+                PieChart.Data slice1 = null;
+                PieChart.Data slice2 = null;
+                PieChart.Data slice3 = null;
+                PieChart.Data slice4 = null;
+                
+                // Bar Chart Chart3
+                XYChart.Series seriesRegion = new XYChart.Series();
+                seriesRegion.setName(checkBox.getText());
+                  
+                // Bar Chart 1
+                for (int i = 0; i < vehicleStrings.size(); i++)
+                {                   
+                    int count = 0;
+                    
+                    for (Vehicles vehicle : vehicles)
                     {
-                        series.getData().add(new XYChart.Data<>(vehicle.getVehicle(), vehicle.getQuantity()));
+                        if( vehicleStrings.get(i).equals(vehicle.getVehicle()) )
+                        {
+                            if (vehicle.getYearString().equals(checkBox.getText()))
+                            {                        
+                                count+=vehicle.getQuantity();
+                            }
+                        }
                     }
+                    series.getData().add(new XYChart.Data<>(vehicleStrings.get(i), count));      // Bar chart 1
+                                        
+                    pieChart1.getData().add(new PieChart.Data(vehicleStrings.get(i) + ": " + checkBox.getText(), count)); 
+                } 
+                
+                barChart1.getData().add(series); 
+                
+                pieChart1.getData().stream().forEach(data -> 
+                {
+                    Tooltip tooltip = new Tooltip();
+                    tooltip.setText(data.getPieValue() + " Sales");
+                    Tooltip.install(data.getNode(), tooltip);
+                    data.pieValueProperty().addListener((observable, oldValue, newValue) -> 
+                    tooltip.setText(newValue + " Sales"));
+                });
+                
+                // Bar Chart 2
+                for (int i = 0; i < yearStrings.size(); i++)
+                {                   
+                    int[] count = {0,0,0,0};                   
+                    
+                    for (Vehicles vehicle : vehicles)
+                    {
+                        if (vehicle.getYearString().equals(checkBox.getText()))
+                        {                                               
+                            if (vehicle.getYearString().equals(yearStrings.get(i)))
+                            {
+                                count[vehicle.getQTR() - 1] += vehicle.getQuantity();
+                            }
+                        }
+                    }
+                    if (count[0] == 0 && count[1] == 0 && count[2] == 0 && count[3] == 0)
+                        continue;
+                    
+                    // Chart set 2
+                    seriesQtr1.getData().add(new XYChart.Data<>(yearStrings.get(i), count[0]));     // Bar chart 2 Q1
+                    seriesQtr2.getData().add(new XYChart.Data<>(yearStrings.get(i), count[1]));     // Bar chart 2 Q2
+                    seriesQtr3.getData().add(new XYChart.Data<>(yearStrings.get(i), count[2]));     // Bar chart 2 Q3
+                    seriesQtr4.getData().add(new XYChart.Data<>(yearStrings.get(i), count[3]));     // Bar chart 2 Q4
+
+                    slice1 = new PieChart.Data(yearStrings.get(i) + ": Q1", count[0]);
+                    slice2 = new PieChart.Data(yearStrings.get(i) + ": Q2", count[1]);
+                    slice3 = new PieChart.Data(yearStrings.get(i) + ": Q3", count[2]);
+                    slice4 = new PieChart.Data(yearStrings.get(i) + ": Q4", count[3]);
+
+                    pieChart2.getData().addAll(slice1, slice2, slice3, slice4);
+                    
+                    pieChart2.getData().stream().forEach(data -> 
+                    {
+                        Tooltip tooltip = new Tooltip();
+                        tooltip.setText(data.getPieValue() + " Sales");
+                        Tooltip.install(data.getNode(), tooltip);
+                        data.pieValueProperty().addListener((observable, oldValue, newValue) -> 
+                        tooltip.setText(newValue + " Sales"));
+                    });
+
+                }
+
+                // Chart set 2
+                // -------------
+                barChart2.getData().addAll(seriesQtr1, seriesQtr2, seriesQtr3, seriesQtr4);
+                
+                // Bar Chart 3
+                for (int i = 0; i < regionStrings.size(); i++)
+                {                   
+                    int count = 0;                   
+                    
+                    for (Vehicles vehicle : vehicles)
+                    {
+                        if (vehicle.getYearString().equals(checkBox.getText()))
+                        {                                               
+                            if (vehicle.getRegion().equals(regionStrings.get(i)))
+                            {
+                                count += vehicle.getQuantity();
+                            }
+                        }
+                    }
+                    if (count == 0)
+                        continue;
+                    
+                    seriesRegion.getData().add(new XYChart.Data<>(regionStrings.get(i), count));     // Bar chart 3
+
+                    pieChart3.getData().add(new PieChart.Data(regionStrings.get(i) + ": " + checkBox.getText(), count));
+
                 }
                 
-                BarChart1.getData().add(series);
+                barChart3.getData().addAll(seriesRegion);
+                
+                pieChart3.getData().stream().forEach(data -> 
+                {
+                    Tooltip tooltip = new Tooltip();
+                    tooltip.setText(data.getPieValue() + " Sales");
+                    Tooltip.install(data.getNode(), tooltip);
+                    data.pieValueProperty().addListener((observable, oldValue, newValue) -> 
+                    tooltip.setText(newValue + " Sales"));
+                });
             }
         }
     }
@@ -245,31 +410,60 @@ public class DashboardController implements Initializable
     //Provides functionality to radio buttons and allows the changing of the graph being viewed
     private void constructRadio()
     {
-        myGroup.selectedToggleProperty().addListener(new ChangeListener<Toggle>()
+        myGroup1.selectedToggleProperty().addListener(new ChangeListener<Toggle>()
         {
             @Override
             public void changed(ObservableValue<? extends Toggle> ov, Toggle old_toggle, Toggle new_toggle)
             {
-                if (myGroup.getSelectedToggle().equals(radioLine))
+                if (myGroup1.getSelectedToggle().equals(radioBar1))
                 {
-                    lineChart1.setVisible(true);
-                    bubbleChart1.setVisible(false);
+                    barChart1.setVisible(true);
                     pieChart1.setVisible(false);
                 } 
-                else if (myGroup.getSelectedToggle().equals(radioBubble))
+                else if (myGroup1.getSelectedToggle().equals(radioPie1))
                 {
-                    lineChart1.setVisible(false);
-                    bubbleChart1.setVisible(true);
-                    pieChart1.setVisible(false);
-                }
-                else if (myGroup.getSelectedToggle().equals(radioPie))
-                {
-                    lineChart1.setVisible(false);
-                    bubbleChart1.setVisible(false);
+                    barChart1.setVisible(false);
                     pieChart1.setVisible(true);
-                }
+                } 
             }
         });
+        
+        myGroup2.selectedToggleProperty().addListener(new ChangeListener<Toggle>()
+        {
+            @Override
+            public void changed(ObservableValue<? extends Toggle> ov, Toggle old_toggle, Toggle new_toggle)
+            {
+                if (myGroup2.getSelectedToggle().equals(radioBar2))
+                {
+                    barChart2.setVisible(true);
+                    pieChart2.setVisible(false);
+                } 
+                else if (myGroup2.getSelectedToggle().equals(radioPie2))
+                {
+                    barChart2.setVisible(false);
+                    pieChart2.setVisible(true);
+                } 
+            }
+        });
+                
+                
+        myGroup3.selectedToggleProperty().addListener(new ChangeListener<Toggle>()
+        {
+            @Override
+            public void changed(ObservableValue<? extends Toggle> ov, Toggle old_toggle, Toggle new_toggle)
+            {
+                if (myGroup3.getSelectedToggle().equals(radioBar3))
+                {
+                    barChart3.setVisible(true);
+                    pieChart3.setVisible(false);
+                } 
+                else if (myGroup3.getSelectedToggle().equals(radioPie3))
+                {
+                    barChart3.setVisible(false);
+                    pieChart3.setVisible(true);
+                } 
+            }
+        });        
     }
 
     //not quite sure how some of this work since its from glyns stuff
@@ -371,52 +565,5 @@ public class DashboardController implements Initializable
         });
 
         new Thread(Task1).start();
-    }
-    
-    private void constructTable()
-    {
-        //https://shahsparx.me/javafx-tableview-example-tableview-json/ try this
-        
-        // Region column
-        TableColumn<Vehicles, String> regionCol = new TableColumn<>("Region"); 
-        regionCol.setMinWidth(200);
-        regionCol.setCellValueFactory(new PropertyValueFactory<>("Region"));
-        
-        // Vehicle column
-        TableColumn<Vehicles, String> vehicleCol = new TableColumn<>("Vehicle");
-        vehicleCol.setMinWidth(200);
-        vehicleCol.setCellValueFactory(new PropertyValueFactory<>("Vehicle"));
-        
-        // Quantity column
-        TableColumn<Vehicles, Integer> quantityCol = new TableColumn<>("Quantity");
-        quantityCol.setMinWidth(200);
-        quantityCol.setCellValueFactory(new PropertyValueFactory<>("Quantity"));
-        
-        // Year column
-        TableColumn<Vehicles, Integer> yearCol = new TableColumn<>("Year");
-        yearCol.setMinWidth(200);
-        yearCol.setCellValueFactory(new PropertyValueFactory<>("Year"));
-        
-        // Quarter column
-        TableColumn<Vehicles, Byte> quarterCol = new TableColumn<>("Quarter");
-        quarterCol.setMinWidth(200);
-        quarterCol.setCellValueFactory(new PropertyValueFactory<>("Qtr"));
-        
-        table = new TableView<>();
-        table.setItems(getVehicles());
-        table.getColumns().addAll(regionCol, vehicleCol, quantityCol, yearCol, quarterCol);
-    }
-    
-    public ObservableList<Vehicles> getVehicles()
-    {
-        byte b = 2;
-        ObservableList<Vehicles> vehiclesList = FXCollections.observableArrayList();
-        vehiclesList.add(new Vehicles("America", "Elise", 24, 2014, b));
-        vehiclesList.add(new Vehicles("America2", "Elise5", 27, 2013, b));
-        vehiclesList.add(new Vehicles("America3", "Elise2", 25, 2012, b));
-        vehiclesList.add(new Vehicles("America4", "Elise4", 15, 2013, b));
-        vehiclesList.add(new Vehicles("America5", "Elise6", 17, 2014, b));
-        
-        return vehiclesList;
     }
 }

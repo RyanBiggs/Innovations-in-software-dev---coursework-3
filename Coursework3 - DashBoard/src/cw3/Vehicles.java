@@ -97,17 +97,17 @@ import javafx.beans.property.StringProperty;
 
 public class Vehicles
 {
-    final private String Region, Vehicle;
-    final private Integer Quantity, Year;
-    final private byte Qtr;
+    private final String Region, Vehicle;
+    private final Integer Quantity, Year;
+    private final byte QTR;
     
     public Vehicles (String region, String vehicle, Integer quantity, Integer year, byte qtr)
     {
-        this.Qtr = qtr;
+        this.QTR = qtr;
         this.Quantity = quantity;
         this.Region = region;
         this.Vehicle = vehicle;
-        this.Year = year;
+        this.Year = year;        
     }
     
     @Override
@@ -118,7 +118,7 @@ public class Vehicles
                             ("Vehicle:" + Vehicle + " "), 
                             ("Quantity:" + Quantity + " "), 
                             ("Year:" + Year + " "), 
-                            ("Qtr:" + Qtr + " "));
+                            ("Qtr:" + QTR + " "));
     }
 
     public String getRegion() 
@@ -131,7 +131,7 @@ public class Vehicles
         return Vehicle;
     }
     
-    public int getQuantity()
+    public Integer getQuantity()
     {
         return Quantity;
     }
@@ -141,7 +141,7 @@ public class Vehicles
         return Quantity.toString();
     }
     
-    public int getYear()
+    public Integer getYear()
     {
         return Year;
     }
@@ -153,6 +153,11 @@ public class Vehicles
 
     public byte getQTR()
     {
-        return Qtr;
+        return QTR;
+    }
+    
+    public String getQTRString()
+    {
+        return String.format("%s",(QTR));
     }
 }
